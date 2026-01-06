@@ -16,4 +16,10 @@ $routes->group('api', function ($routes) {
     $routes->get('books', 'Books::index');
     $routes->post('books', 'Books::create');
     $routes->get('books/(:segment)', 'Books::show/$1');
+
+
+    // API Loans
+    $routes->get('loans', 'Loans::index');
+    $routes->post('loans', 'Loans::create');
+    $routes->post('loans/return', 'Loans::returnBook');
 });
