@@ -17,6 +17,9 @@ $routes->group('api', function ($routes) {
     $routes->post('books', 'Books::create');
     $routes->get('books/(:segment)', 'Books::show/$1');
 
+    // API Reading Progress
+    $routes->post('reading-progress/update', 'ReadingProgress::updateProgress');
+
 
     // API Loans
     $routes->get('loans', 'Loans::index');
