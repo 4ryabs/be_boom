@@ -19,4 +19,10 @@ $routes->group('api', function ($routes) {
 
     // API Reading Progress
     $routes->post('reading-progress/update', 'ReadingProgress::updateProgress');
+
+
+    // API Loans
+    $routes->get('loans', 'Loans::index');
+    $routes->post('loans', 'Loans::create');
+    $routes->post('loans/return', 'Loans::returnBook');
 });
