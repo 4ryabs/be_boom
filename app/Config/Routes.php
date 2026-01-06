@@ -10,6 +10,7 @@ $routes->get('/', 'Home::index');
 $routes->group('api', function ($routes) {
     // API Auth User
     $routes->post('auth/sync', 'Auth::sync');
+    $routes->get('auth/(:segment)', 'Auth::show/$1');
 
     // API Books
     $routes->get('books', 'Books::index');
