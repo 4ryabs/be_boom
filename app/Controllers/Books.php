@@ -139,7 +139,54 @@ class Books extends ResourceController
         );
     }
 
+    public function update($id = null)
+    {
+        if (!$id) return $this->fail('ID buku diperlukan');
 
+        $bookModel = new BookModel();
+
+        $book = $bookModel->find($id);
+        if (!$book) return $this->failNotFound('Buku tidak ditemukan');
+
+        $data = $this->request->getJSON(true);
+        if (!$data) return $this->fail('Tidak ada data yang dikirim');
+        $updateData = [
+            'title' => $data['title'] ?? $book->title,
+            'author' => $data['author'] ?? $book->author,
+            'publisher' => $data['publisher'] ?? $book->publisher,
+            'cover_image_url' => $data['cover_image_url'] ?? $book->cover_image_url,
+            'category_id' => $data['category_id'] ?? $book->category_id,
+        ];
+
+        try {
+            $bookModel->update($id, $updateData);
+            return $this->respond(['message' => 'Data buku berhasil diperbarui']);
+        } catch (\Exception $e) {
+            return $this->fail($e->getMessage());
+        }
+    }
+
+    /**
+     * Delete the designated resource object from the model.
+     *
+     * @param int|string|null $id
+     *
+     * @return ResponseInterface
+     */
+
+    public function delete($id = null)
+    {
+        if (!$id) return $this->fail('ID buku diperlukan');
+
+        $bookModel = new BookModel();
+
+        if (!$bookModel->find($id)) {
+            return $this->failNotFound('Buku tidak ditemukan');
+        }
+
+        $bookModel->delete($id);
+        return $this->respondDeleted(['message' => 'Buku berhasil dihapus']);
+    }
 
     /**
      * Return a new resource object, with default properties.
@@ -172,20 +219,6 @@ class Books extends ResourceController
      *
      * @return ResponseInterface
      */
-    public function update($id = null)
-    {
-        //
-    }
-
-    /**
-     * Delete the designated resource object from the model.
-     *
-     * @param int|string|null $id
-     *
-     * @return ResponseInterface
-     */
-    public function delete($id = null)
-    {
-        //
-    }
+    
+    
 }
