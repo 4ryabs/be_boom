@@ -44,10 +44,31 @@ class Books extends ResourceController
         $bookModel = new BookModel();
         $progressModel = new ReadingProgressModel();
 
-        $data = $this->request->getJSON(true);
+        $data = null;
 
-        if (! $data) {
-            return $this->fail('Data harus berupa format JSON');
+        try {
+            $data = $this->request->getJSON(true);
+        } catch (\Exception $e) {
+            $data = null;
+        }
+
+        if (!$data) {
+            $data = $this->request->getPost();
+        }
+
+        if (empty($data['user_id'])) {
+            return $this->fail('USER ID tidak ditemukan. Pastikan user_id dikirim.', 400);
+        }
+
+        $coverUrl = '-';
+        $file = $this->request->getFile('cover_image');
+
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+            $newName = $file->getRandomName();
+            $file->move('uploads/covers', $newName);
+            $coverUrl = base_url('uploads/covers/' . $newName);
+        } else {
+            $coverUrl = $data['cover_image_url'] ?? '-';
         }
 
         $uuidFixed = $this->generateUUID();
@@ -55,11 +76,12 @@ class Books extends ResourceController
         $dataBuku = [
             'book_id' => $uuidFixed,
             'user_id' => $data['user_id'],
-            'category_id' => $data['category_id'],
+            'category_id' => $data['category_id'] ?? null,
             'title' => $data['title'],
             'author' => $data['author'],
-            'publisher' => $data['publisher'],
-            'cover_image_url' => $data['cover_image_url'] ?? null,
+            'publisher' => $data['publisher'] ?? '-',
+            'tota_pages' => $data['total_pages'] ?? 0,
+            'cover_image_url' => $coverUrl,
         ];
 
         try {
@@ -72,9 +94,9 @@ class Books extends ResourceController
                 'status_baca' => 'belum_dibaca',
             ];
 
-            return $this->respondCreated(['message' => 'Buku berhasil ditambahkan', 'book_id' => $uuidFixed]);
+            return $this->respondCreated(['status' => 201,'message' => 'Buku berhasil ditambahkan', 'data' => $dataBuku]);
         } catch (\Exception $e) {
-            return $this->fail($e->getMassage());
+            return $this->fail($e->getMessage());
         }
     }
 
