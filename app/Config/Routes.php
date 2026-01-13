@@ -20,9 +20,15 @@ $routes->group('api', function ($routes) {
     // API Reading Progress
     $routes->post('reading-progress/update', 'ReadingProgress::updateProgress');
 
-
     // API Loans
     $routes->get('loans', 'Loans::index');
     $routes->post('loans', 'Loans::create');
     $routes->post('loans/return', 'Loans::returnBook');
+    $routes->put('loans/(:segment)', 'Loans::update/$1');
+
+    // API Categories
+    $routes->get('categories', 'Categories::index');
+
+    // API Borrowers
+    $routes->get('borrowers/search', 'Borrowers::searchBorrowers');
 });
