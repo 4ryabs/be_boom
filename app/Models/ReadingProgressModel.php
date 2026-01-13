@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class ReadingProgressModel extends Model
 {
-    protected $table            = 'readingprogresses';
+    protected $table            = 'reading_progress';
     protected $primaryKey       = 'progress_id';
     protected $useAutoIncrement = false;
     protected $returnType       = 'App\Entities\ReadingProgress';

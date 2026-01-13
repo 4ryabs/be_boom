@@ -44,10 +44,31 @@ class Books extends ResourceController
         $bookModel = new BookModel();
         $progressModel = new ReadingProgressModel();
 
-        $data = $this->request->getJSON(true);
+        $data = null;
 
-        if (! $data) {
-            return $this->fail('Data harus berupa format JSON');
+        try {
+            $data = $this->request->getJSON(true);
+        } catch (\Exception $e) {
+            $data = null;
+        }
+
+        if (!$data) {
+            $data = $this->request->getPost();
+        }
+
+        if (empty($data['user_id'])) {
+            return $this->fail('USER ID tidak ditemukan. Pastikan user_id dikirim.', 400);
+        }
+
+        $coverUrl = '-';
+        $file = $this->request->getFile('cover_image');
+
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+            $newName = $file->getRandomName();
+            $file->move('uploads/covers', $newName);
+            $coverUrl = base_url('uploads/covers/' . $newName);
+        } else {
+            $coverUrl = $data['cover_image_url'] ?? '-';
         }
 
         $uuidFixed = $this->generateUUID();
@@ -55,11 +76,12 @@ class Books extends ResourceController
         $dataBuku = [
             'book_id' => $uuidFixed,
             'user_id' => $data['user_id'],
-            'category_id' => $data['category_id'],
+            'category_id' => $data['category_id'] ?? null,
             'title' => $data['title'],
             'author' => $data['author'],
-            'publisher' => $data['publisher'],
-            'cover_image_url' => $data['cover_image_url'] ?? null,
+            'publisher' => $data['publisher'] ?? '-',
+            'tota_pages' => $data['total_pages'] ?? 0,
+            'cover_image_url' => $coverUrl,
         ];
 
         try {
@@ -72,9 +94,9 @@ class Books extends ResourceController
                 'status_baca' => 'belum_dibaca',
             ];
 
-            return $this->respondCreated(['message' => 'Buku berhasil ditambahkan', 'book_id' => $uuidFixed]);
+            return $this->respondCreated(['status' => 201,'message' => 'Buku berhasil ditambahkan', 'data' => $dataBuku]);
         } catch (\Exception $e) {
-            return $this->fail($e->getMassage());
+            return $this->fail($e->getMessage());
         }
     }
 
@@ -117,7 +139,54 @@ class Books extends ResourceController
         );
     }
 
+    public function update($id = null)
+    {
+        if (!$id) return $this->fail('ID buku diperlukan');
 
+        $bookModel = new BookModel();
+
+        $book = $bookModel->find($id);
+        if (!$book) return $this->failNotFound('Buku tidak ditemukan');
+
+        $data = $this->request->getJSON(true);
+        if (!$data) return $this->fail('Tidak ada data yang dikirim');
+        $updateData = [
+            'title' => $data['title'] ?? $book->title,
+            'author' => $data['author'] ?? $book->author,
+            'publisher' => $data['publisher'] ?? $book->publisher,
+            'cover_image_url' => $data['cover_image_url'] ?? $book->cover_image_url,
+            'category_id' => $data['category_id'] ?? $book->category_id,
+        ];
+
+        try {
+            $bookModel->update($id, $updateData);
+            return $this->respond(['message' => 'Data buku berhasil diperbarui']);
+        } catch (\Exception $e) {
+            return $this->fail($e->getMessage());
+        }
+    }
+
+    /**
+     * Delete the designated resource object from the model.
+     *
+     * @param int|string|null $id
+     *
+     * @return ResponseInterface
+     */
+
+    public function delete($id = null)
+    {
+        if (!$id) return $this->fail('ID buku diperlukan');
+
+        $bookModel = new BookModel();
+
+        if (!$bookModel->find($id)) {
+            return $this->failNotFound('Buku tidak ditemukan');
+        }
+
+        $bookModel->delete($id);
+        return $this->respondDeleted(['message' => 'Buku berhasil dihapus']);
+    }
 
     /**
      * Return a new resource object, with default properties.
@@ -150,20 +219,6 @@ class Books extends ResourceController
      *
      * @return ResponseInterface
      */
-    public function update($id = null)
-    {
-        //
-    }
-
-    /**
-     * Delete the designated resource object from the model.
-     *
-     * @param int|string|null $id
-     *
-     * @return ResponseInterface
-     */
-    public function delete($id = null)
-    {
-        //
-    }
+    
+    
 }
