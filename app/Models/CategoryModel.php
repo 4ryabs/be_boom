@@ -8,7 +8,7 @@ class CategoryModel extends Model
     protected $table            = 'categories';
     protected $primaryKey       = 'category_id';
     protected $useAutoIncrement = false;
-    protected $returnType       = 'App/Entities/Category';
+    protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = ['category_id', 'category_name'];
