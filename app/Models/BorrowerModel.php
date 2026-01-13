@@ -7,7 +7,7 @@ class BorrowerModel extends Model
 {
     protected $table            = 'borrowers';
     protected $primaryKey       = 'borrower_id';
-    protected $useAutoIncrement = true;
+    protected $useAutoIncrement = false;
     protected $returnType       = 'App\Entities\Borrower';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
