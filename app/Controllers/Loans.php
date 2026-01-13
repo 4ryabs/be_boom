@@ -10,7 +10,9 @@ class Loans extends ResourceController
 {
     public function index()
     {
-        $uid = $this->request->getVar('uid');
+        $uid    = $this->request->getVar('uid');
+        $status = $this->request->getVar('status');
+
         if (! $uid) {
             return $this->fail('User ID required');
         }
@@ -20,9 +22,11 @@ class Loans extends ResourceController
 
         $builder->select('
             loans.loan_id,
+            loans.book_id,
             loans.loan_date,
             loans.return_date,
             loans.notes,
+            loans.is_returned,
             books.title as book_title,
             books.cover_image_url,
             borrowers.name as borrower_name,
@@ -31,8 +35,14 @@ class Loans extends ResourceController
         $builder->join('books', 'books.book_id = loans.book_id');
         $builder->join('borrowers', 'borrowers.borrower_id = loans.borrower_id');
         $builder->where('borrowers.user_id', $uid);
-        $builder->where('loans.is_returned', 0);
-        $builder->orderBy('loans.loan_date', 'ASC');
+
+        if ($status === 'history') {
+            $builder->where('loans.is_returned', 1);
+            $builder->orderBy('loans.return_date', 'DESC');
+        } else {
+            $builder->where('loans.is_returned', 0);
+            $builder->orderBy('loans.loan_date', 'ASC');
+        }
 
         $data = $builder->get()->getResult();
 
@@ -113,21 +123,100 @@ class Loans extends ResourceController
 
     public function returnBook()
     {
-        $loanModel     = new LoanModel();
-        $progressModel = new ReadingProgressModel();
+        try {
+            $loanModel     = new LoanModel();
+            $progressModel = new ReadingProgressModel();
 
-        $data   = $this->request->getJSON(true);
-        $loanId = $data['loan_id'];
-        $bookId = $data['book_id'];
+            $data   = $this->request->getJSON(true);
+            $loanId = $data['loan_id'] ?? null;
+            $bookId = $data['book_id'] ?? null;
 
-        $loanModel->update($loanId, ['is_returned' => 1]);
+            if (! $loanId || ! $bookId) {
+                return $this->fail("ID Peminjaman atau ID Buku tidak ditemukan.");
+            }
 
-        $progress = $progressModel->where('book_id', $bookId)->first();
-        if ($progress) {
-            $progressModel->update($progress->progress_id, ['status_baca' => 'belum_dibaca']);
+            $loanModel->update($loanId, ['is_returned' => 1]);
+
+            $progress = $progressModel->asArray()->where('book_id', $bookId)->first();
+
+            if ($progress) {
+                $progressId = $progress['progress_id'];
+
+                $totalPages  = intval($progress['total_pages']);
+                $currentPage = intval($progress['current_page']);
+
+                $newStatus = 'belum_dibaca';
+
+                if ($totalPages > 0 && $currentPage >= $totalPages) {
+                    $newStatus = 'selesai';
+                } elseif ($currentPage > 0) {
+
+                    $newStatus = 'sedang_dibaca';
+                }
+
+                $progressModel->update($progressId, ['status_baca' => $newStatus]);
+
+                return $this->respond([
+                    'message' => 'Buku dikembalikan. Status diupdate jadi: ' . $newStatus,
+                ]);
+            }
+
+            return $this->respond(['message' => 'Buku dikembalikan (Tidak ada history baca)']);
+
+        } catch (\Throwable $e) {
+            return $this->fail('SERVER ERROR: ' . $e->getMessage());
         }
+    }
 
-        return $this->respond(['message' => 'Buku berhasil dikembalikan']);
+    public function update($loanId = null)
+    {
+        try {
+            $loanModel     = new LoanModel();
+            $borrowerModel = new BorrowerModel();
+            $data          = $this->request->getJSON(true);
+
+            if (! $loanId) {
+                return $this->fail('Loan ID required');
+            }
+
+            $existingLoan = $loanModel->find($loanId);
+            if (! $existingLoan) {
+                return $this->failNotFound('Data peminjaman tidak ditemukan');
+            }
+
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            $updateLoanData = [
+                'return_date' => $data['return_date'] ?? null,
+                'notes'       => $data['notes'] ?? null,
+            ];
+            $loanModel->update($loanId, $updateLoanData);
+
+            if (isset($data['name']) || isset($data['phone'])) {
+                $borrowerData = [];
+                if (! empty($data['name'])) {
+                    $borrowerData['name'] = $data['name'];
+                }
+
+                if (! empty($data['phone'])) {
+                    $borrowerData['phone_number'] = $data['phone'];
+                }
+
+                $borrowerModel->update($existingLoan['borrower_id'], $borrowerData);
+            }
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                return $this->fail('Gagal mengupdate data');
+            }
+
+            return $this->respond(['message' => 'Data berhasil diperbarui']);
+
+        } catch (\Throwable $e) {
+            return $this->fail('SERVER ERROR: ' . $e->getMessage());
+        }
     }
 
     private function generateUUID()
