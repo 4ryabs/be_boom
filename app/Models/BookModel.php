@@ -9,7 +9,7 @@ class BookModel extends Model
     protected $table            = 'books';
     protected $primaryKey       = 'book_id';
     protected $useAutoIncrement = false;
-    protected $returnType       = Book::class;
+    protected $returnType       = 'App\Entities\Book';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = ['book_id', 'user_id', 'category_id',  'title', 'author', 'publisher', 'cover_image_url'];
