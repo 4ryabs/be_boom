@@ -11,6 +11,7 @@ $routes->group('api', function ($routes) {
     // API Auth User
     $routes->post('auth/sync', 'Auth::sync');
     $routes->get('auth/(:segment)', 'Auth::show/$1');
+    $routes->post('auth/update-name', 'Auth::updateName');
 
     // API Books
     $routes->get('books', 'Books::index');
