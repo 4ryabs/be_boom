@@ -73,4 +73,38 @@ class Auth extends ResourceController
 
         return $this->respond($response);
     }
+
+    public function updateName()
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            $uid  = $data['uid'] ?? null;
+            $name = $data['full_name'] ?? null;
+
+            if (! $uid || ! $name) {
+                return $this->fail('UID dan Nama wajib diisi');
+            }
+
+            $userModel = new UserModel();
+
+            $user = $userModel->where('user_id', $uid)->first();
+
+            if (! $user) {
+                return $this->failNotFound('User tidak ditemukan');
+            }
+
+            $pk = isset($user->id) ? $user->id : $user->user_id;
+
+            $userModel->update($pk, ['full_name' => $name]);
+
+            return $this->respond([
+                'status'    => 200,
+                'message'   => 'Nama berhasil diubah',
+                'full_name' => $name,
+            ]);
+
+        } catch (\Throwable $e) {
+            return $this->fail('SERVER ERROR: ' . $e->getMessage());
+        }
+    }
 }
