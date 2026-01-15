@@ -173,24 +173,40 @@ class Loans extends ResourceController
         try {
             $loanModel     = new LoanModel();
             $borrowerModel = new BorrowerModel();
-            $data          = $this->request->getJSON(true);
+
+            $data = $this->request->getJSON(true);
 
             if (! $loanId) {
                 return $this->fail('Loan ID required');
             }
 
             $existingLoan = $loanModel->find($loanId);
+
             if (! $existingLoan) {
                 return $this->failNotFound('Data peminjaman tidak ditemukan');
+            }
+
+            $borrowerId = 0;
+            if (is_array($existingLoan)) {
+                $borrowerId = $existingLoan['borrower_id'];
+            } else {
+
+                $borrowerId = $existingLoan->borrower_id;
             }
 
             $db = \Config\Database::connect();
             $db->transStart();
 
+            $returnDate = $data['return_date'] ?? null;
+            if (empty($returnDate)) {
+                $returnDate = null;
+            }
+
             $updateLoanData = [
-                'return_date' => $data['return_date'] ?? null,
+                'return_date' => $returnDate,
                 'notes'       => $data['notes'] ?? null,
             ];
+
             $loanModel->update($loanId, $updateLoanData);
 
             if (isset($data['name']) || isset($data['phone'])) {
@@ -203,16 +219,21 @@ class Loans extends ResourceController
                     $borrowerData['phone_number'] = $data['phone'];
                 }
 
-                $borrowerModel->update($existingLoan['borrower_id'], $borrowerData);
+                if (! empty($borrowerData) && $borrowerId) {
+                    $borrowerModel->update($borrowerId, $borrowerData);
+                }
             }
 
             $db->transComplete();
 
             if ($db->transStatus() === false) {
-                return $this->fail('Gagal mengupdate data');
+                return $this->fail('Gagal mengupdate data database');
             }
 
-            return $this->respond(['message' => 'Data berhasil diperbarui']);
+            return $this->respond([
+                'status'  => 200,
+                'message' => 'Data berhasil diperbarui',
+            ]);
 
         } catch (\Throwable $e) {
             return $this->fail('SERVER ERROR: ' . $e->getMessage());
